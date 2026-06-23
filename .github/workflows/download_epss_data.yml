@@ -1,0 +1,36 @@
+name: Download latest EPSS from First
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 0 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  scheduled:
+    runs-on: ubuntu-latest
+    steps:
+    - name: EPSS
+      uses: actions/checkout@v6
+    - name: Download latest EPSS data
+      run: |-
+        curl --fail-with-body -L -O https://epss.empiricalsecurity.com/epss_scores-current.csv.gz
+    - name: Unzip the data
+      run: |-
+        gunzip -f epss_scores-current.csv.gz
+    - name: Make sure the CSV file is not empty
+      run: |-
+        test -s epss_scores-current.csv
+    - name: Removing the comment at the beginning of the file
+      run: |-
+        sed -i '1d' epss_scores-current.csv
+    - name: Commit and push
+      run: |-
+        git config user.name "github-actions"
+        git config user.email "github-actions@users.noreply.github.com"
+        git add epss_scores-current.csv
+        timestamp=$(date -u)
+        git diff --cached --quiet || git commit -m "Updated EPSS: ${timestamp}"
+        git push origin HEAD:main
